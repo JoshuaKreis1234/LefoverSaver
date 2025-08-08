@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Image, ScrollView } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { auth, db } from '../../firebase';
 import { addDoc, collection, doc, runTransaction, serverTimestamp, getDoc } from 'firebase/firestore';
-import { money } from '../../theme';
+import { money, useTheme } from '../../theme';
 import PaymentModal from '../../components/PaymentModal';
 
 type Store = {
@@ -21,6 +21,7 @@ type Offer = {
   currency?: string;
   pickupUntil: string;
   stock?: number;
+  imageUrl?: string;
   storeId?: string;
   categories?: string[];
   store?: Store | null;
@@ -34,6 +35,7 @@ async function scheduleBookingReminder(pickupUntil: string) {
 export default function Details() {
   const { offer } = useLocalSearchParams<{ offer: string }>();
   const data = useMemo(() => (offer ? JSON.parse(offer) as Offer : null), [offer]);
+  const { colors } = useTheme();
   const [loading, setLoading] = useState(false);
   const [store, setStore] = useState<Store | null>(data?.store ?? null);
   const [showPayment, setShowPayment] = useState(false);
@@ -117,18 +119,40 @@ export default function Details() {
   };
 
   return (
-    <View style={styles.screen}>
-      <Text style={styles.title}>{data.name}</Text>
-      <Text style={styles.price}>{money(data.priceCents, data.currency || 'EUR')}</Text>
-      <Text style={styles.time}>{data.pickupUntil}</Text>
-      {store?.address && <Text style={styles.info}>{store.address}</Text>}
-      {store?.contact && <Text style={styles.info}>{store.contact}</Text>}
-      {data.categories && data.categories.length > 0 && (
-        <Text style={styles.info}>Categories: {data.categories.join(', ')}</Text>
-      )}
-      <TouchableOpacity style={styles.cta} onPress={onBook} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaText}>Book Now</Text>}
-      </TouchableOpacity>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}> 
+      <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+        {data.imageUrl ? (
+          <Image source={{ uri: data.imageUrl }} style={styles.image} />
+        ) : (
+          <View style={[styles.image, { backgroundColor: colors.tagBg }]} />
+        )}
+        <View style={styles.content}>
+          <Text style={[styles.title, { color: colors.text }]}>{data.name}</Text>
+          <Text style={[styles.price, { color: colors.priceText }]}>
+            {money(data.priceCents, data.currency || 'EUR')}
+          </Text>
+          <View style={[styles.timeBox, { backgroundColor: colors.tagBg }]}> 
+            <Text style={[styles.time, { color: colors.tagText }]}>Pickup until {data.pickupUntil}</Text>
+          </View>
+          {store?.address && <Text style={[styles.info, { color: colors.text }]}>{store.address}</Text>}
+          {store?.contact && <Text style={[styles.info, { color: colors.textMuted }]}>{store.contact}</Text>}
+          {data.categories && data.categories.length > 0 && (
+            <View style={styles.categoryRow}>
+              {data.categories.map((cat) => (
+                <View key={cat} style={[styles.categoryChip, { backgroundColor: colors.tagBg }]}> 
+                  <Text style={{ color: colors.tagText, fontSize: 12 }}>{cat}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+          {typeof data.stock === 'number' && (
+            <Text style={[styles.stock, { color: colors.textMuted }]}>{data.stock} left</Text>
+          )}
+          <TouchableOpacity style={[styles.cta, { backgroundColor: colors.primary }]} onPress={onBook} disabled={loading}>
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaText}>Book Now</Text>}
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
       <PaymentModal
         visible={showPayment}
         amount={data.priceCents}
@@ -143,12 +167,18 @@ export default function Details() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 24, justifyContent: 'center' },
+  container: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  image: { width: '100%', height: 220 },
+  content: { padding: 24 },
   title: { fontSize: 28, fontWeight: '800', marginBottom: 10 },
-  price: { fontSize: 22, color: '#d97706', fontWeight: '700', marginBottom: 6 },
-  time: { fontSize: 16, color: '#374151', marginBottom: 20 },
-  cta: { backgroundColor: '#16a34a', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  price: { fontSize: 22, fontWeight: '700', marginBottom: 6 },
+  timeBox: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginBottom: 16 },
+  time: { fontSize: 14, fontWeight: '500' },
+  info: { fontSize: 14, marginBottom: 4 },
+  categoryRow: { flexDirection: 'row', flexWrap: 'wrap', marginVertical: 8 },
+  categoryChip: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, marginRight: 6, marginBottom: 6 },
+  stock: { fontSize: 14, marginBottom: 20 },
+  cta: { paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 12 },
   ctaText: { color: '#fff', fontWeight: '800', fontSize: 18 },
-  info: { fontSize: 14, color: '#374151', marginBottom: 4 },
 });
