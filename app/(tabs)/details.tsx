@@ -9,6 +9,8 @@ type Store = {
   address?: string;
   contact?: string;
   categories?: string[];
+  lat?: number;
+  lng?: number;
 };
 
 type Offer = {

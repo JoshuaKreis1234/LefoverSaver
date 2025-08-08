@@ -12,9 +12,10 @@ export default function StoreAdmin() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!auth.currentUser) return;
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
     (async () => {
-      const ref = doc(db, 'stores', auth.currentUser.uid);
+      const ref = doc(db, 'stores', uid);
       const snap = await getDoc(ref);
       if (snap.exists()) {
         const data = snap.data() as any;

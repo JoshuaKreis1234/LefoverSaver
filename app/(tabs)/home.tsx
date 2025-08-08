@@ -26,6 +26,7 @@ type Offer = {
   storeId?: string;
   categories?: string[];
   store?: Store | null;
+  distanceKm?: number | null;
 };
 
 export default function HomeScreen() {

@@ -51,7 +51,7 @@ export default function Profile() {
       // fetch role doc
       if (u) {
         const r = await getDoc(doc(db, 'roles', u.uid));
-        setRole((r.exists() ? (r.data().role as any) : 'user') ?? 'user');
+        setRole(r.exists() ? (r.data().role as 'user' | 'partner' | 'admin') : 'user');
       } else {
         setRole(null);
       }
