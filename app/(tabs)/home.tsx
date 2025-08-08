@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TextInput, StyleSheet, StatusBar, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, ActivityIndicator, Platform, FlatList, TouchableOpacity, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-// eslint-disable-next-line import/no-unresolved
-import MapView, { Marker } from 'react-native-maps';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { db } from '../../firebase';
@@ -38,9 +36,6 @@ export default function HomeScreen() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [coords, setCoords] = useState<{lat:number; lng:number} | null>(null);
-  const [maxDistance, setMaxDistance] = useState('');
-  const [pickupAfter, setPickupAfter] = useState('');
-  const [category, setCategory] = useState('');
 
   // get location (ask once)
   useEffect(() => {
@@ -91,26 +86,6 @@ export default function HomeScreen() {
     });
   }, [offers, coords]);
 
-  const filtered = useMemo(() => {
-    return withDistance.filter(o => {
-      const distOk = !maxDistance || (o.distanceKm != null && o.distanceKm <= parseFloat(maxDistance));
-      const pickupOk = !pickupAfter || o.pickupUntil >= pickupAfter;
-      const catOk = !category || (o.category || '').toLowerCase().includes(category.toLowerCase());
-      return distOk && pickupOk && catOk;
-    });
-  }, [withDistance, maxDistance, pickupAfter, category]);
-
-  const region = coords ? {
-    latitude: coords.lat,
-    longitude: coords.lng,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05
-  } : {
-    latitude: 37.78825,
-    longitude: -122.4324,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05
-  };
 
   return (
     <LinearGradient colors={[colors.bg, colors.bg2]} style={[styles.background]}>
