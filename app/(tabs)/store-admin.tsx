@@ -9,6 +9,7 @@ export default function StoreAdmin() {
   const [categories, setCategories] = useState('');
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
+  const [rating, setRating] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -24,6 +25,7 @@ export default function StoreAdmin() {
         setCategories((data.categories || []).join(', '));
         if (data.lat != null) setLat(String(data.lat));
         if (data.lng != null) setLng(String(data.lng));
+        if (data.rating != null) setRating(String(data.rating));
       }
     })();
   }, []);
@@ -35,8 +37,13 @@ export default function StoreAdmin() {
     }
     const latNum = Number(lat);
     const lngNum = Number(lng);
+    const ratingNum = Number(rating);
     if ([latNum, lngNum].some(n => Number.isNaN(n))) {
       Alert.alert('Invalid coordinates', 'Latitude/Longitude must be numbers.');
+      return;
+    }
+    if (rating && (Number.isNaN(ratingNum) || ratingNum < 0 || ratingNum > 5)) {
+      Alert.alert('Invalid rating', 'Rating must be between 0 and 5.');
       return;
     }
     setSaving(true);
@@ -47,6 +54,7 @@ export default function StoreAdmin() {
         categories: categories.split(',').map(c => c.trim()).filter(Boolean),
         lat: latNum,
         lng: lngNum,
+        rating: ratingNum,
       }, { merge: true });
       Alert.alert('Saved', 'Store profile updated.');
     } catch (e: any) {
@@ -63,12 +71,14 @@ export default function StoreAdmin() {
       <TextInput style={styles.input} value={address} onChangeText={setAddress} placeholder="123 Main St" />
       <Text style={styles.label}>Contact</Text>
       <TextInput style={styles.input} value={contact} onChangeText={setContact} placeholder="email@example.com" />
-      <Text style={styles.label}>Categories (comma separated)</Text>
+      <Text style={styles.label}>Food Categories (comma separated)</Text>
       <TextInput style={styles.input} value={categories} onChangeText={setCategories} placeholder="bakery, vegan" />
       <Text style={styles.label}>Latitude</Text>
       <TextInput style={styles.input} value={lat} onChangeText={setLat} keyboardType="decimal-pad" placeholder="52.5200" />
       <Text style={styles.label}>Longitude</Text>
       <TextInput style={styles.input} value={lng} onChangeText={setLng} keyboardType="decimal-pad" placeholder="13.4050" />
+      <Text style={styles.label}>Rating (0-5)</Text>
+      <TextInput style={styles.input} value={rating} onChangeText={setRating} keyboardType="decimal-pad" placeholder="4.5" />
       <TouchableOpacity style={styles.btn} onPress={save} disabled={saving}>
         {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Save</Text>}
       </TouchableOpacity>
