@@ -62,8 +62,8 @@ export default function HomeScreen() {
     return offers.map(addDist).sort((a,b) => {
       // nearest first; if nulls, push to bottom
       const da = a.distanceKm ?? 9999;
-      const dbb = b.distanceKm ?? 9999;
-      return da - dbb;
+      const db = b.distanceKm ?? 9999;
+      return da - db;
     });
   }, [offers, coords]);
 
