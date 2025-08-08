@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, StatusBar, ActivityIndicator, Platform, FlatList, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, Platform, FlatList, TouchableOpacity, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
@@ -35,6 +35,7 @@ export default function HomeScreen() {
 
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [coords, setCoords] = useState<{lat:number; lng:number} | null>(null);
 
   // get location (ask once)
@@ -61,8 +62,13 @@ export default function HomeScreen() {
         storeMap[sid] = s.exists() ? (s.data() as Store) : null;
       }));
       setOffers(raw.map(o => ({ ...o, store: o.storeId ? storeMap[o.storeId] ?? null : null })));
+      setError(null);
       setLoading(false);
-    }, () => setLoading(false));
+    }, (err) => {
+      console.error(err);
+      setError('Failed to load offers');
+      setLoading(false);
+    });
     return unsub;
   }, []);
 
@@ -93,8 +99,27 @@ export default function HomeScreen() {
       <Text style={[styles.header, { color: colors.primary }]}>🍽️ Today’s Food Offers</Text>
       <Text style={[styles.subtitle, { color: colors.textMuted }]}>Find deals near you</Text>
 
-      {loading ? (
-        <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>
+      {error ? (
+        <View style={styles.center}><Text style={styles.errorText}>{error}</Text></View>
+      ) : loading ? (
+        <FlatList
+          data={[1,2,3]}
+          contentContainerStyle={{ paddingBottom: 32 }}
+          keyExtractor={(item) => item.toString()}
+          renderItem={() => (
+            <View style={[styles.card, { backgroundColor: colors.card, shadowOpacity: 0.12 }]}> 
+              <View style={styles.cardRow}>
+                <View style={[styles.thumb, { backgroundColor: colors.tagBg }]} />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <View style={[styles.skeletonLine, { backgroundColor: colors.tagBg, width: '60%' }]} />
+                  <View style={[styles.skeletonLine, { backgroundColor: colors.tagBg, width: '40%', marginTop: 8 }]} />
+                  <View style={[styles.skeletonTag, { backgroundColor: colors.tagBg, marginTop: 8 }]} />
+                </View>
+                <View style={[styles.priceSkeleton, { backgroundColor: colors.tagBg }]} />
+              </View>
+            </View>
+          )}
+        />
       ) : (
         <FlatList
           data={withDistance}
@@ -154,6 +179,7 @@ const styles = StyleSheet.create({
   header: { fontSize: 28, fontWeight: 'bold', marginLeft: 28, marginBottom: 4, letterSpacing: 0.5 },
   subtitle: { fontSize: 16, marginLeft: 28, marginBottom: 16 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorText: { color: '#ef4444', textAlign: 'center' },
   filters: { paddingHorizontal: 20, marginBottom: 10 },
   input: { borderRadius: 8, padding: 8, marginBottom: 8 },
   map: { flex: 1 },
@@ -175,4 +201,7 @@ const styles = StyleSheet.create({
   time: { fontSize: 12, fontWeight: '500' },
   priceBox: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, marginLeft: 12 },
   price: { fontSize: 16, fontWeight: 'bold' },
+  skeletonLine: { height: 14, borderRadius: 4 },
+  skeletonTag: { width: 80, height: 20, borderRadius: 8 },
+  priceSkeleton: { width: 60, height: 24, borderRadius: 12, marginLeft: 12 },
 });
