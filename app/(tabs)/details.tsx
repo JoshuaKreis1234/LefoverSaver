@@ -2,13 +2,21 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { auth, db } from '../../firebase';
-import { addDoc, collection, doc, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { money } from '../../theme';
 
-type Offer = { id: string; name: string; price: string; time: string; stock?: number; };
+type Offer = {
+  id: string;
+  name: string;
+  priceCents: number;
+  currency?: string;
+  pickupUntil: string;
+  stock?: number;
+};
 
 export default function Details() {
   const { offer } = useLocalSearchParams<{ offer: string }>();
-  const data = useMemo(() => (offer ? JSON.parse(offer) as Offer : null), [offer]);
+  const data = useMemo(() => (offer ? (JSON.parse(offer) as Offer) : null), [offer]);
   const [loading, setLoading] = useState(false);
 
   if (!data) return <View style={styles.center}><Text>Offer not found.</Text></View>;
@@ -28,12 +36,14 @@ export default function Details() {
         const currentStock = (current?.stock ?? 1);
         if (currentStock <= 0) throw new Error('Sold out');
         tx.update(offerRef, { stock: currentStock - 1 });
-        // create booking
-        await addDoc(collection(db, 'bookings'), {
+        // create booking within transaction
+        const bookingRef = doc(collection(db, 'bookings'));
+        tx.set(bookingRef, {
           offerId: data.id,
           offerName: data.name,
-          price: data.price,
-          pickupTime: data.time,
+          priceCents: data.priceCents,
+          currency: data.currency || 'EUR',
+          pickupTime: data.pickupUntil,
           uid: auth.currentUser!.uid,
           createdAt: serverTimestamp(),
         });
@@ -52,8 +62,8 @@ export default function Details() {
   return (
     <View style={styles.screen}>
       <Text style={styles.title}>{data.name}</Text>
-      <Text style={styles.price}>{data.price}</Text>
-      <Text style={styles.time}>{data.time}</Text>
+      <Text style={styles.price}>{money(data.priceCents, data.currency || 'EUR')}</Text>
+      <Text style={styles.time}>{data.pickupUntil}</Text>
       <TouchableOpacity style={styles.cta} onPress={onBook} disabled={loading}>
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaText}>Book Now</Text>}
       </TouchableOpacity>
