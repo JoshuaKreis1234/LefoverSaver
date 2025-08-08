@@ -8,7 +8,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test": "npx tsc -p tsconfig.test.json && node --test dist/__tests__/theme.test.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",

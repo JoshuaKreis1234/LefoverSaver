@@ -1,4 +1,5 @@
 import { useColorScheme } from 'react-native';
+export { money } from './money';
 
 export const palettes = {
   light: {
@@ -32,6 +33,3 @@ export function useTheme() {
   const c = palettes[scheme];
   return { scheme, colors: c };
 }
-
-export const money = (amountCents: number, currency = 'USD', locale = 'en-US') =>
-  new Intl.NumberFormat(locale, { style: 'currency', currency }).format((amountCents || 0) / 100);
