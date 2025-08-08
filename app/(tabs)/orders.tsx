@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { auth, db } from '../../firebase';
-import { collection, onSnapshot, orderBy, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 
 type Booking = {
   id: string;
@@ -19,12 +19,14 @@ export default function Orders() {
     if (!uid) return;
     const q = query(
       collection(db, 'bookings'),
-      where('uid', '==', uid),
-      orderBy('createdAt', 'desc')
+      where('uid', '==', uid)
     );
-    const unsub = onSnapshot(q, (snap) =>
-      setBookings(snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<Booking, 'id'>) })))
-    );
+    const unsub = onSnapshot(q, (snap) => {
+      const docs = snap.docs
+        .map(d => ({ id: d.id, ...(d.data() as Omit<Booking, 'id'>) }))
+        .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+      setBookings(docs);
+    });
     return unsub;
   }, [uid]);
 

@@ -1,5 +1,8 @@
 {
-  "plugins": [
-    "expo-router"
-  ]
+  "expo": {
+    "scheme": "leftoversaver",
+    "plugins": [
+      "expo-router"
+    ]
+  }
 }
