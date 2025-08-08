@@ -15,6 +15,11 @@ type Offer = {
   stock?: number;
 };
 
+async function scheduleBookingReminder(pickupUntil: string) {
+  // In a full implementation, trigger a local notification before pickupUntil.
+  console.log('Scheduling reminder for', pickupUntil);
+}
+
 export default function Details() {
   const { offer } = useLocalSearchParams<{ offer: string }>();
   const data = useMemo(() => (offer ? JSON.parse(offer) as Offer : null), [offer]);
@@ -47,6 +52,7 @@ export default function Details() {
           const currentStock = (current?.stock ?? 1);
           if (currentStock <= 0) throw new Error('Sold out');
           tx.update(offerRef, { stock: currentStock - 1 });
+          const code = Math.random().toString(36).slice(2, 10).toUpperCase();
           await addDoc(collection(db, 'bookings'), {
             offerId: data.id,
             offerName: data.name,
@@ -55,14 +61,18 @@ export default function Details() {
             uid: auth.currentUser!.uid,
             createdAt: serverTimestamp(),
             paid: true,
+            code,
+            status: 'active',
             ...(data.currency ? { currency: data.currency } : {}),
           });
         });
 
+        await scheduleBookingReminder(data.pickupUntil);
         Alert.alert('Booked!', 'Your meal has been reserved.', [
           { text: 'OK', onPress: () => router.replace('/(tabs)/orders') },
         ]);
       } else {
+        const code = Math.random().toString(36).slice(2, 10).toUpperCase();
         await addDoc(collection(db, 'bookings'), {
           offerId: data.id,
           offerName: data.name,
@@ -71,6 +81,8 @@ export default function Details() {
           uid: auth.currentUser!.uid,
           createdAt: serverTimestamp(),
           paid: false,
+          code,
+          status: 'active',
           ...(data.currency ? { currency: data.currency } : {}),
         });
         Alert.alert('Payment failed', 'Booking saved as unpaid.');
