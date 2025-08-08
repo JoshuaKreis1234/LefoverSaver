@@ -60,7 +60,7 @@ export default function Profile() {
       // fetch role doc
       if (u) {
         const r = await getDoc(doc(db, 'roles', u.uid));
-        setRole((r.exists() ? (r.data().role as any) : 'user') ?? 'user');
+        setRole(r.exists() ? (r.data().role as 'user' | 'partner' | 'admin') : 'user');
       } else {
         setRole(null);
       }
@@ -278,19 +278,22 @@ export default function Profile() {
               </TouchableOpacity>
             </View>
           </View>
-
-          <View style={styles.card}>
-            <Text style={styles.section}>Partner</Text>
-            {role === 'partner' || role === 'admin' ? (
+          {/* Partner controls */}
+          <Text style={styles.section}>Partner</Text>
+          {role === 'partner' || role === 'admin' ? (
+            <>
               <TouchableOpacity style={styles.btn} onPress={() => router.push('/(tabs)/create-offer')}>
                 <Text style={styles.btnText}>Create Offer</Text>
               </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={styles.btn} onPress={requestPartner}>
-                <Text style={styles.btnText}>Request Partner Access</Text>
+              <TouchableOpacity style={styles.btn} onPress={() => router.push('/(tabs)/store-admin')}>
+                <Text style={styles.btnText}>Edit Store</Text>
               </TouchableOpacity>
-            )}
-          </View>
+            </>
+          ) : (
+            <TouchableOpacity style={styles.btn} onPress={requestPartner}>
+              <Text style={styles.btnText}>Request Partner Access</Text>
+            </TouchableOpacity>
+          )}
         </>
       )}
     </ScrollView>

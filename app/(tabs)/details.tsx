@@ -1,11 +1,18 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { auth, db } from '../../firebase';
-import { addDoc, collection, doc, runTransaction, serverTimestamp } from 'firebase/firestore';
-import { scheduleBookingReminder } from '../../notifications';
+import { addDoc, collection, doc, runTransaction, serverTimestamp, getDoc } from 'firebase/firestore';
 import { money } from '../../theme';
 import PaymentModal from '../../components/PaymentModal';
+
+type Store = {
+  address?: string;
+  contact?: string;
+  categories?: string[];
+  lat?: number;
+  lng?: number;
+};
 
 type Offer = {
   id: string;
@@ -14,6 +21,9 @@ type Offer = {
   currency?: string;
   pickupUntil: string;
   stock?: number;
+  storeId?: string;
+  categories?: string[];
+  store?: Store | null;
 };
 
 async function scheduleBookingReminder(pickupUntil: string) {
@@ -25,8 +35,16 @@ export default function Details() {
   const { offer } = useLocalSearchParams<{ offer: string }>();
   const data = useMemo(() => (offer ? JSON.parse(offer) as Offer : null), [offer]);
   const [loading, setLoading] = useState(false);
-  const [showPayment, setShowPayment] = useState(false);
-  const paymentResolver = useRef<(paid: boolean) => void>();
+  const [store, setStore] = useState<Store | null>(data?.store ?? null);
+
+  useEffect(() => {
+    (async () => {
+      if (!store && data?.storeId) {
+        const s = await getDoc(doc(db, 'stores', data.storeId));
+        setStore(s.exists() ? (s.data() as Store) : null);
+      }
+    })();
+  }, [store, data]);
 
   if (!data) return <View style={styles.center}><Text>Offer not found.</Text></View>;
 
@@ -101,6 +119,11 @@ export default function Details() {
       <Text style={styles.title}>{data.name}</Text>
       <Text style={styles.price}>{money(data.priceCents, data.currency || 'EUR')}</Text>
       <Text style={styles.time}>{data.pickupUntil}</Text>
+      {store?.address && <Text style={styles.info}>{store.address}</Text>}
+      {store?.contact && <Text style={styles.info}>{store.contact}</Text>}
+      {data.categories && data.categories.length > 0 && (
+        <Text style={styles.info}>Categories: {data.categories.join(', ')}</Text>
+      )}
       <TouchableOpacity style={styles.cta} onPress={onBook} disabled={loading}>
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaText}>Book Now</Text>}
       </TouchableOpacity>
@@ -125,4 +148,5 @@ const styles = StyleSheet.create({
   time: { fontSize: 16, color: '#374151', marginBottom: 20 },
   cta: { backgroundColor: '#16a34a', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
   ctaText: { color: '#fff', fontWeight: '800', fontSize: 18 },
+  info: { fontSize: 14, color: '#374151', marginBottom: 4 },
 });

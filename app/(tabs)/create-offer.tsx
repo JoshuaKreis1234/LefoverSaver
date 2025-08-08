@@ -16,8 +16,7 @@ export default function CreateOffer() {
   const [currency, setCurrency] = useState('EUR');
   const [pickupUntil, setPickupUntil] = useState('Pickup before 8PM');
   const [stock, setStock] = useState('5');
-  const [lat, setLat] = useState('52.5200');  // Berlin demo
-  const [lng, setLng] = useState('13.4050');
+  const [categories, setCategories] = useState(''); // comma-separated
 
   const [imageUri, setImageUri] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
@@ -60,18 +59,12 @@ export default function CreateOffer() {
     }
     const priceNum = Number(priceCents);
     const stockNum = Number(stock);
-    const latNum = Number(lat);
-    const lngNum = Number(lng);
     if (Number.isNaN(priceNum) || priceNum < 0) {
       Alert.alert('Invalid price', 'Enter price in cents (e.g., 599).');
       return;
     }
     if (Number.isNaN(stockNum) || stockNum < 0) {
       Alert.alert('Invalid stock', 'Enter a non-negative number.');
-      return;
-    }
-    if ([latNum, lngNum].some((n) => Number.isNaN(n))) {
-      Alert.alert('Invalid coordinates', 'Latitude/Longitude must be numbers.');
       return;
     }
 
@@ -85,10 +78,10 @@ export default function CreateOffer() {
         currency: currency || 'EUR',
         pickupUntil: pickupUntil || '',
         stock: stockNum,
-        lat: latNum,
-        lng: lngNum,
+        categories: categories.split(',').map(c => c.trim()).filter(Boolean),
         imageUrl: imageUrl || null,
         ownerUid: auth.currentUser.uid,
+        storeId: auth.currentUser.uid,
         createdAt: serverTimestamp(),
       });
       await notifyNewOffer(name.trim());
@@ -154,22 +147,12 @@ export default function CreateOffer() {
           onChangeText={setStock}
         />
 
-        <Text style={styles.label}>Latitude</Text>
+        <Text style={styles.label}>Categories (comma separated)</Text>
         <TextInput
-          placeholder="52.5200"
+          placeholder="bakery, vegan"
           style={styles.input}
-          keyboardType="decimal-pad"
-          value={lat}
-          onChangeText={setLat}
-        />
-
-        <Text style={styles.label}>Longitude</Text>
-        <TextInput
-          placeholder="13.4050"
-          style={styles.input}
-          keyboardType="decimal-pad"
-          value={lng}
-          onChangeText={setLng}
+          value={categories}
+          onChangeText={setCategories}
         />
 
         <TouchableOpacity style={styles.imageBtn} onPress={pickImage}>

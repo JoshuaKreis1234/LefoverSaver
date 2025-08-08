@@ -6,8 +6,16 @@ import MapView, { Marker } from 'react-native-maps';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { db } from '../../firebase';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { money, useTheme } from '../../theme';
+
+type Store = {
+  address?: string;
+  contact?: string;
+  categories?: string[];
+  lat?: number;
+  lng?: number;
+};
 
 type Offer = {
   id: string;
@@ -17,9 +25,10 @@ type Offer = {
   pickupUntil: string;
   stock?: number;
   imageUrl?: string;
-  lat?: number;
-  lng?: number;
-  category?: string;
+  storeId?: string;
+  categories?: string[];
+  store?: Store | null;
+  distanceKm?: number | null;
 };
 
 export default function HomeScreen() {
@@ -47,8 +56,16 @@ export default function HomeScreen() {
   // live offers
   useEffect(() => {
     const q = query(collection(db, 'offers'), orderBy('name', 'asc'));
-    const unsub = onSnapshot(q, (snap) => {
-      setOffers(snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<Offer,'id'>) })));
+    const unsub = onSnapshot(q, async (snap) => {
+      const raw = snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<Offer, 'id'>) }));
+      const uniqueStoreIds = Array.from(new Set(raw.map(o => o.storeId).filter(Boolean)));
+      const storeMap: Record<string, Store | null> = {};
+      await Promise.all(uniqueStoreIds.map(async (sid) => {
+        if (!sid) return;
+        const s = await getDoc(doc(db, 'stores', sid));
+        storeMap[sid] = s.exists() ? (s.data() as Store) : null;
+      }));
+      setOffers(raw.map(o => ({ ...o, store: o.storeId ? storeMap[o.storeId] ?? null : null })));
       setLoading(false);
     }, () => setLoading(false));
     return unsub;
@@ -56,12 +73,13 @@ export default function HomeScreen() {
 
   const withDistance = useMemo(() => {
     const addDist = (o: Offer) => {
-      if (!coords || o.lat == null || o.lng == null) return { ...o, distanceKm: null as number | null };
+      const slat = o.store?.lat; const slng = o.store?.lng;
+      if (!coords || slat == null || slng == null) return { ...o, distanceKm: null as number | null };
       const R = 6371;
       const toRad = (v:number)=>v*Math.PI/180;
-      const dLat = toRad(o.lat - coords.lat);
-      const dLng = toRad(o.lng - coords.lng);
-      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(coords.lat))*Math.cos(toRad(o.lat))*Math.sin(dLng/2)**2;
+      const dLat = toRad(slat - coords.lat);
+      const dLng = toRad(slng - coords.lng);
+      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(coords.lat))*Math.cos(toRad(slat))*Math.sin(dLng/2)**2;
       const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
       return { ...o, distanceKm: R*c };
     };
@@ -102,45 +120,54 @@ export default function HomeScreen() {
       {loading ? (
         <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>
       ) : (
-        <>
-          <View style={styles.filters}>
-            <TextInput
-              style={[styles.input, { backgroundColor: colors.card, color: colors.text }]}
-              placeholder="Max distance (km)"
-              placeholderTextColor={colors.textMuted}
-              value={maxDistance}
-              onChangeText={setMaxDistance}
-              keyboardType="numeric"
-            />
-            <TextInput
-              style={[styles.input, { backgroundColor: colors.card, color: colors.text }]}
-              placeholder="Pickup after (HH:MM)"
-              placeholderTextColor={colors.textMuted}
-              value={pickupAfter}
-              onChangeText={setPickupAfter}
-            />
-            <TextInput
-              style={[styles.input, { backgroundColor: colors.card, color: colors.text }]}
-              placeholder="Category"
-              placeholderTextColor={colors.textMuted}
-              value={category}
-              onChangeText={setCategory}
-            />
-          </View>
-          <MapView style={styles.map} initialRegion={region}>
-            {filtered.map(item => (
-              item.lat != null && item.lng != null && (
-                <Marker
-                  key={item.id}
-                  coordinate={{ latitude: item.lat, longitude: item.lng }}
-                  title={item.name}
-                  description={`${money(item.priceCents, item.currency || 'EUR')} • ${item.pickupUntil}`}
-                  onCalloutPress={() => router.push({ pathname: '/(tabs)/details', params: { offer: JSON.stringify(item) } })}
-                />
-              )
-            ))}
-          </MapView>
-        </>
+        <FlatList
+          data={withDistance}
+          contentContainerStyle={{ paddingBottom: 32 }}
+          keyExtractor={(item) => item.id}
+          ListEmptyComponent={
+            <View style={styles.center}>
+              {/* Optional Lottie empty state */}
+              {/* <LottieView source={require('../../assets/lottie/empty.json')} autoPlay loop style={{ width: 220, height: 220 }} /> */}
+              <Text style={{ color: colors.textMuted, marginTop: 12 }}>No offers available right now.</Text>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[styles.card, { backgroundColor: colors.card, shadowOpacity: 0.12 }]}
+              activeOpacity={0.9}
+              onPress={() => router.push({ pathname: '/(tabs)/details', params: { offer: JSON.stringify(item) } })}
+            >
+              <View style={styles.cardRow}>
+                {item.imageUrl ? (
+                  <Image source={{ uri: item.imageUrl }} style={styles.thumb} />
+                ) : (
+                  <View style={[styles.thumb, { backgroundColor: colors.tagBg }]} />
+                )}
+
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+                  {item.store?.address && (
+                    <Text style={{ color: colors.textMuted }} numberOfLines={1}>{item.store.address}</Text>
+                  )}
+                  <View style={[styles.timeBox, { backgroundColor: colors.tagBg }]}>
+                    <Text style={[styles.time, { color: colors.tagText }]}>{item.pickupUntil}</Text>
+                  </View>
+                  {item.distanceKm != null && (
+                    <Text style={{ color: colors.textMuted, marginTop: 6 }}>
+                      {item.distanceKm.toFixed(1)} km away
+                    </Text>
+                  )}
+                </View>
+
+                <View style={[styles.priceBox, { backgroundColor: colors.priceBg }]}>
+                  <Text style={[styles.price, { color: colors.priceText }]}>
+                    {money(item.priceCents, item.currency || 'EUR')}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
       )}
     </LinearGradient>
   );
