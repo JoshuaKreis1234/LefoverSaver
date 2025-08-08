@@ -12,6 +12,7 @@ type Store = {
   categories?: string[];
   lat?: number;
   lng?: number;
+  rating?: number;
 };
 
 type Offer = {
@@ -136,6 +137,9 @@ export default function Details() {
           </View>
           {store?.address && <Text style={[styles.info, { color: colors.text }]}>{store.address}</Text>}
           {store?.contact && <Text style={[styles.info, { color: colors.textMuted }]}>{store.contact}</Text>}
+          {typeof store?.rating === 'number' && (
+            <Text style={[styles.info, { color: colors.text }]}>Rating: {store.rating.toFixed(1)} / 5</Text>
+          )}
           {data.categories && data.categories.length > 0 && (
             <View style={styles.categoryRow}>
               {data.categories.map((cat) => (

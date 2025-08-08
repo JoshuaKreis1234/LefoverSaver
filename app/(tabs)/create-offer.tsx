@@ -147,7 +147,7 @@ export default function CreateOffer() {
           onChangeText={setStock}
         />
 
-        <Text style={styles.label}>Categories (comma separated)</Text>
+        <Text style={styles.label}>Food Categories (comma separated)</Text>
         <TextInput
           placeholder="bakery, vegan"
           style={styles.input}

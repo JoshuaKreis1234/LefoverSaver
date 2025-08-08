@@ -7,6 +7,7 @@ import * as Location from 'expo-location';
 import { db } from '../../firebase';
 import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { money, useTheme } from '../../theme';
+import { Collapsible } from '../../components/Collapsible';
 
 type Store = {
   address?: string;
@@ -14,6 +15,7 @@ type Store = {
   categories?: string[];
   lat?: number;
   lng?: number;
+  rating?: number;
 };
 
 type Offer = {
@@ -41,6 +43,7 @@ export default function HomeScreen() {
   const [maxDistanceKm, setMaxDistanceKm] = useState<number | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [maxPriceCents, setMaxPriceCents] = useState<number | null>(null);
+  const [minRating, setMinRating] = useState<number | null>(null);
 
   // get location (ask once)
   useEffect(() => {
@@ -86,8 +89,6 @@ export default function HomeScreen() {
     setSelectedCategories(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
   };
 
-  const maxOfferPrice = useMemo(() => offers.reduce((m, o) => Math.max(m, o.priceCents), 0), [offers]);
-
   const filtered = useMemo(() => {
     const addDist = (o: Offer) => {
       const slat = o.store?.lat; const slng = o.store?.lng;
@@ -105,7 +106,8 @@ export default function HomeScreen() {
       .filter(o =>
         (maxDistanceKm == null || (o.distanceKm ?? Infinity) <= maxDistanceKm) &&
         (selectedCategories.length === 0 || o.categories?.some(c => selectedCategories.includes(c))) &&
-        (maxPriceCents == null || o.priceCents <= maxPriceCents)
+        (maxPriceCents == null || o.priceCents <= maxPriceCents) &&
+        (minRating == null || (o.store?.rating ?? 0) >= minRating)
       )
       .sort((a,b) => {
         // nearest first; if nulls, push to bottom
@@ -114,7 +116,7 @@ export default function HomeScreen() {
         return da - db;
       });
     return filtered;
-  }, [offers, coords, maxDistanceKm, selectedCategories, maxPriceCents]);
+  }, [offers, coords, maxDistanceKm, selectedCategories, maxPriceCents, minRating]);
 
 
   return (
@@ -146,35 +148,46 @@ export default function HomeScreen() {
         />
       ) : (
         <>
-          <View style={styles.filters}>
-            <Text style={{ color: colors.text }}>Max Distance: {maxDistanceKm != null ? `${maxDistanceKm.toFixed(0)} km` : '∞'}</Text>
-            <Slider
-              minimumValue={0}
-              maximumValue={20}
-              step={1}
-              value={maxDistanceKm ?? 20}
-              onValueChange={setMaxDistanceKm}
-            />
+          <Collapsible title="Filters">
+            <View style={styles.filters}>
+              <Text style={{ color: colors.text }}>Max Distance: {maxDistanceKm != null ? `${maxDistanceKm.toFixed(0)} km` : '∞'}</Text>
+              <Slider
+                minimumValue={0}
+                maximumValue={500}
+                step={1}
+                value={maxDistanceKm ?? 500}
+                onValueChange={setMaxDistanceKm}
+              />
 
-            <Text style={{ color: colors.text, marginTop: 8 }}>Categories:</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-              {allCategories.map(c => (
-                <TouchableOpacity key={c} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 8, marginTop: 4 }} onPress={() => toggleCategory(c)}>
-                  <View style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 1, borderColor: colors.text, backgroundColor: selectedCategories.includes(c) ? colors.primary : 'transparent', marginRight: 4 }} />
-                  <Text style={{ color: colors.text }}>{c}</Text>
-                </TouchableOpacity>
-              ))}
+              <Text style={{ color: colors.text, marginTop: 8 }}>Food Categories:</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                {allCategories.map(c => (
+                  <TouchableOpacity key={c} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 8, marginTop: 4 }} onPress={() => toggleCategory(c)}>
+                    <View style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 1, borderColor: colors.text, backgroundColor: selectedCategories.includes(c) ? colors.primary : 'transparent', marginRight: 4 }} />
+                    <Text style={{ color: colors.text }}>{c}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={{ color: colors.text, marginTop: 8 }}>Max Price: {maxPriceCents != null ? money(maxPriceCents, 'EUR') : '∞'}</Text>
+              <Slider
+                minimumValue={0}
+                maximumValue={5000}
+                step={100}
+                value={maxPriceCents ?? 5000}
+                onValueChange={setMaxPriceCents}
+              />
+
+              <Text style={{ color: colors.text, marginTop: 8 }}>Min Rating: {minRating != null ? minRating.toFixed(1) : 'Any'}</Text>
+              <Slider
+                minimumValue={0}
+                maximumValue={5}
+                step={0.5}
+                value={minRating ?? 0}
+                onValueChange={(v) => setMinRating(v === 0 ? null : v)}
+              />
             </View>
-
-            <Text style={{ color: colors.text, marginTop: 8 }}>Max Price: {maxPriceCents != null ? money(maxPriceCents, 'EUR') : '∞'}</Text>
-            <Slider
-              minimumValue={0}
-              maximumValue={maxOfferPrice || 10000}
-              step={100}
-              value={maxPriceCents ?? (maxOfferPrice || 10000)}
-              onValueChange={setMaxPriceCents}
-            />
-          </View>
+          </Collapsible>
 
           <FlatList
             data={filtered}
@@ -204,6 +217,9 @@ export default function HomeScreen() {
                     <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
                     {item.store?.address && (
                       <Text style={{ color: colors.textMuted }} numberOfLines={1}>{item.store.address}</Text>
+                    )}
+                    {typeof item.store?.rating === 'number' && (
+                      <Text style={{ color: colors.textMuted }} numberOfLines={1}>⭐ {item.store.rating.toFixed(1)} / 5</Text>
                     )}
                     <View style={[styles.timeBox, { backgroundColor: colors.tagBg }]}> 
                       <Text style={[styles.time, { color: colors.tagText }]}>{item.pickupUntil}</Text>
