@@ -141,13 +141,19 @@ export default function Profile() {
     if (!user) return;
     setLoading(true);
     try {
-      await setDoc(doc(db, 'partnerRequests', user.uid), {
-        uid: user.uid,
-        email: user.email ?? null,
-        displayName: user.displayName ?? null,
-        createdAt: new Date(),
-        status: 'pending',
-      });
+      await setDoc(
+        doc(db, 'users', user.uid),
+        {
+          partnerRequest: {
+            uid: user.uid,
+            email: user.email ?? null,
+            displayName: user.displayName ?? null,
+            createdAt: new Date(),
+            status: 'pending',
+          },
+        },
+        { merge: true }
+      );
       Alert.alert('Request sent', 'We will review your partner request.');
     } catch (e: any) {
       Alert.alert('Failed', e?.message ?? 'Try again');
