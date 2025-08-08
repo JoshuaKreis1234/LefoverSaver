@@ -3,8 +3,16 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } fr
 import { useLocalSearchParams, router } from 'expo-router';
 import { auth, db } from '../../firebase';
 import { addDoc, collection, doc, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { money } from '../../theme';
 
-type Offer = { id: string; name: string; price: string; time: string; stock?: number; };
+type Offer = {
+  id: string;
+  name: string;
+  priceCents: number;
+  currency?: string;
+  pickupUntil: string;
+  stock?: number;
+};
 
 export default function Details() {
   const { offer } = useLocalSearchParams<{ offer: string }>();
@@ -32,10 +40,11 @@ export default function Details() {
         await addDoc(collection(db, 'bookings'), {
           offerId: data.id,
           offerName: data.name,
-          price: data.price,
-          pickupTime: data.time,
+          priceCents: data.priceCents,
+          pickupUntil: data.pickupUntil,
           uid: auth.currentUser!.uid,
           createdAt: serverTimestamp(),
+          ...(data.currency ? { currency: data.currency } : {}),
         });
       });
 
@@ -52,8 +61,8 @@ export default function Details() {
   return (
     <View style={styles.screen}>
       <Text style={styles.title}>{data.name}</Text>
-      <Text style={styles.price}>{data.price}</Text>
-      <Text style={styles.time}>{data.time}</Text>
+      <Text style={styles.price}>{money(data.priceCents, data.currency || 'EUR')}</Text>
+      <Text style={styles.time}>{data.pickupUntil}</Text>
       <TouchableOpacity style={styles.cta} onPress={onBook} disabled={loading}>
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaText}>Book Now</Text>}
       </TouchableOpacity>
