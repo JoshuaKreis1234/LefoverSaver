@@ -1,7 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated, FlatList, TouchableOpacity, Dimensions, StyleSheet, Image, StatusBar } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { registerForPushNotificationsAsync } from '../notifications';
 
 const { width, height } = Dimensions.get('window');
 
@@ -36,6 +37,10 @@ const slides: Slide[] = [
 const OnboardingScreen: React.FC = () => {
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList<Slide>>(null);
+
+  useEffect(() => {
+    registerForPushNotificationsAsync();
+  }, []);
 
   const handleSkip = () => {
     router.replace('/(tabs)/home'); // or '/(tabs)/home' for home tab directly

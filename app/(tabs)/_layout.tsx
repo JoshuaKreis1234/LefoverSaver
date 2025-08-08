@@ -11,6 +11,7 @@ export default function Layout() {
       <Tabs.Screen name="create-offer" options={{ href: null }} />
       {/* details may also be hidden if you want */}
       <Tabs.Screen name="details" options={{ href: null }} />
+      <Tabs.Screen name="store-admin" options={{ href: null }} />
     </Tabs>
   );
 }

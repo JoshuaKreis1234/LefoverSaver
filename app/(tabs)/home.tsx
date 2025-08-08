@@ -1,11 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, StatusBar, ActivityIndicator, Image, Platform } from 'react-native';
+import { View, Text, TextInput, StyleSheet, StatusBar, ActivityIndicator, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+// eslint-disable-next-line import/no-unresolved
+import MapView, { Marker } from 'react-native-maps';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { db } from '../../firebase';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { money, useTheme } from '../../theme';
+
+type Store = {
+  address?: string;
+  contact?: string;
+  categories?: string[];
+  lat?: number;
+  lng?: number;
+};
 
 type Offer = {
   id: string;
@@ -15,8 +25,10 @@ type Offer = {
   pickupUntil: string;
   stock?: number;
   imageUrl?: string;
-  lat?: number;
-  lng?: number;
+  storeId?: string;
+  categories?: string[];
+  store?: Store | null;
+  distanceKm?: number | null;
 };
 
 export default function HomeScreen() {
@@ -26,6 +38,9 @@ export default function HomeScreen() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [coords, setCoords] = useState<{lat:number; lng:number} | null>(null);
+  const [maxDistance, setMaxDistance] = useState('');
+  const [pickupAfter, setPickupAfter] = useState('');
+  const [category, setCategory] = useState('');
 
   // get location (ask once)
   useEffect(() => {
@@ -41,8 +56,16 @@ export default function HomeScreen() {
   // live offers
   useEffect(() => {
     const q = query(collection(db, 'offers'), orderBy('name', 'asc'));
-    const unsub = onSnapshot(q, (snap) => {
-      setOffers(snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<Offer,'id'>) })));
+    const unsub = onSnapshot(q, async (snap) => {
+      const raw = snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<Offer, 'id'>) }));
+      const uniqueStoreIds = Array.from(new Set(raw.map(o => o.storeId).filter(Boolean)));
+      const storeMap: Record<string, Store | null> = {};
+      await Promise.all(uniqueStoreIds.map(async (sid) => {
+        if (!sid) return;
+        const s = await getDoc(doc(db, 'stores', sid));
+        storeMap[sid] = s.exists() ? (s.data() as Store) : null;
+      }));
+      setOffers(raw.map(o => ({ ...o, store: o.storeId ? storeMap[o.storeId] ?? null : null })));
       setLoading(false);
     }, () => setLoading(false));
     return unsub;
@@ -50,12 +73,13 @@ export default function HomeScreen() {
 
   const withDistance = useMemo(() => {
     const addDist = (o: Offer) => {
-      if (!coords || o.lat == null || o.lng == null) return { ...o, distanceKm: null as number | null };
+      const slat = o.store?.lat; const slng = o.store?.lng;
+      if (!coords || slat == null || slng == null) return { ...o, distanceKm: null as number | null };
       const R = 6371;
       const toRad = (v:number)=>v*Math.PI/180;
-      const dLat = toRad(o.lat - coords.lat);
-      const dLng = toRad(o.lng - coords.lng);
-      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(coords.lat))*Math.cos(toRad(o.lat))*Math.sin(dLng/2)**2;
+      const dLat = toRad(slat - coords.lat);
+      const dLng = toRad(slng - coords.lng);
+      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(coords.lat))*Math.cos(toRad(slat))*Math.sin(dLng/2)**2;
       const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
       return { ...o, distanceKm: R*c };
     };
@@ -66,6 +90,27 @@ export default function HomeScreen() {
       return da - db;
     });
   }, [offers, coords]);
+
+  const filtered = useMemo(() => {
+    return withDistance.filter(o => {
+      const distOk = !maxDistance || (o.distanceKm != null && o.distanceKm <= parseFloat(maxDistance));
+      const pickupOk = !pickupAfter || o.pickupUntil >= pickupAfter;
+      const catOk = !category || (o.category || '').toLowerCase().includes(category.toLowerCase());
+      return distOk && pickupOk && catOk;
+    });
+  }, [withDistance, maxDistance, pickupAfter, category]);
+
+  const region = coords ? {
+    latitude: coords.lat,
+    longitude: coords.lng,
+    latitudeDelta: 0.05,
+    longitudeDelta: 0.05
+  } : {
+    latitude: 37.78825,
+    longitude: -122.4324,
+    latitudeDelta: 0.05,
+    longitudeDelta: 0.05
+  };
 
   return (
     <LinearGradient colors={[colors.bg, colors.bg2]} style={[styles.background]}>
@@ -101,6 +146,9 @@ export default function HomeScreen() {
 
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+                  {item.store?.address && (
+                    <Text style={{ color: colors.textMuted }} numberOfLines={1}>{item.store.address}</Text>
+                  )}
                   <View style={[styles.timeBox, { backgroundColor: colors.tagBg }]}>
                     <Text style={[styles.time, { color: colors.tagText }]}>{item.pickupUntil}</Text>
                   </View>
@@ -129,15 +177,7 @@ const styles = StyleSheet.create({
   background: { flex: 1, paddingTop: 60 },
   header: { fontSize: 28, fontWeight: 'bold', marginLeft: 28, marginBottom: 16, letterSpacing: 0.5 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  card: {
-    marginHorizontal: 18, marginVertical: 10, borderRadius: 20, padding: 14, elevation: 3,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 5 }, shadowRadius: 12
-  },
-  cardRow: { flexDirection: 'row', alignItems: 'center' },
-  thumb: { width: 68, height: 68, borderRadius: 12, backgroundColor: '#e5e7eb' },
-  name: { fontSize: 18, fontWeight: '800', marginBottom: 6 },
-  timeBox: { alignSelf: 'flex-start', borderRadius: 7, paddingVertical: 4, paddingHorizontal: 11 },
-  time: { fontSize: 13, fontWeight: '600' },
-  priceBox: { borderRadius: 10, paddingVertical: 6, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
-  price: { fontSize: 16, fontWeight: '800' },
+  filters: { paddingHorizontal: 20, marginBottom: 10 },
+  input: { borderRadius: 8, padding: 8, marginBottom: 8 },
+  map: { flex: 1 },
 });
