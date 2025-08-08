@@ -3,14 +3,19 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, Image, Alert, ActivityIndicator, ScrollView
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as WebBrowser from 'expo-web-browser';
+import { useIdTokenAuthRequest } from 'expo-auth-session/providers/google';
 import { useRouter } from 'expo-router';
 import { auth, db, storage } from '../../firebase';
 import {
   onAuthStateChanged, signInAnonymously, signOut, updateProfile,
-  createUserWithEmailAndPassword, signInWithEmailAndPassword, User
+  createUserWithEmailAndPassword, signInWithEmailAndPassword, User,
+  GoogleAuthProvider, signInWithCredential
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function Profile() {
   const router = useRouter();
@@ -23,6 +28,20 @@ export default function Profile() {
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [photoURL, setPhotoURL] = useState<string | null>(user?.photoURL || null);
   const [role, setRole] = useState<'user' | 'partner' | 'admin' | null>(null);
+
+  const [request, response, promptAsync] = useIdTokenAuthRequest({
+    clientId: 'YOUR_GOOGLE_CLIENT_ID',
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token } = response.params;
+      const cred = GoogleAuthProvider.credential(id_token);
+      signInWithCredential(auth, cred).catch((e) => {
+        Alert.alert('Google sign-in failed', e?.message ?? 'Try again');
+      });
+    }
+  }, [response]);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -205,9 +224,22 @@ export default function Profile() {
             onChangeText={setPw}
           />
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.btn} onPress={doEmailSignIn}><Text style={styles.btnText}>Sign In</Text></TouchableOpacity>
-            <TouchableOpacity style={[styles.btn, styles.btnAlt]} onPress={doEmailSignUp}><Text style={[styles.btnText, styles.btnAltText]}>Sign Up</Text></TouchableOpacity>
-            <TouchableOpacity style={[styles.btn, styles.btnGhost]} onPress={doAnon}><Text style={styles.btnGhostText}>Continue Anonymously</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.btn} onPress={doEmailSignIn}>
+              <Text style={styles.btnText}>Sign In</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.btn, styles.btnAlt]} onPress={doEmailSignUp}>
+              <Text style={[styles.btnText, styles.btnAltText]}>Sign Up</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.btn, styles.btnAlt]}
+              disabled={!request}
+              onPress={() => promptAsync()}
+            >
+              <Text style={[styles.btnText, styles.btnAltText]}>Sign In with Google</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.btn, styles.btnGhost]} onPress={doAnon}>
+              <Text style={styles.btnGhostText}>Continue Anonymously</Text>
+            </TouchableOpacity>
           </View>
         </>
       )}
