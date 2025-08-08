@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { auth, db } from '../../firebase';
@@ -36,6 +36,8 @@ export default function Details() {
   const data = useMemo(() => (offer ? JSON.parse(offer) as Offer : null), [offer]);
   const [loading, setLoading] = useState(false);
   const [store, setStore] = useState<Store | null>(data?.store ?? null);
+  const [showPayment, setShowPayment] = useState(false);
+  const paymentResolver = useRef<((paid: boolean) => void) | null>(null);
 
   useEffect(() => {
     (async () => {
