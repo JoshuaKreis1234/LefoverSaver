@@ -4,8 +4,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { db } from '../../firebase';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { money, useTheme } from '../../theme';
+
+type Store = {
+  address?: string;
+  contact?: string;
+  categories?: string[];
+  lat?: number;
+  lng?: number;
+};
 
 type Offer = {
   id: string;
@@ -15,8 +23,9 @@ type Offer = {
   pickupUntil: string;
   stock?: number;
   imageUrl?: string;
-  lat?: number;
-  lng?: number;
+  storeId?: string;
+  categories?: string[];
+  store?: Store | null;
 };
 
 export default function HomeScreen() {
@@ -41,8 +50,16 @@ export default function HomeScreen() {
   // live offers
   useEffect(() => {
     const q = query(collection(db, 'offers'), orderBy('name', 'asc'));
-    const unsub = onSnapshot(q, (snap) => {
-      setOffers(snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<Offer,'id'>) })));
+    const unsub = onSnapshot(q, async (snap) => {
+      const raw = snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<Offer, 'id'>) }));
+      const uniqueStoreIds = Array.from(new Set(raw.map(o => o.storeId).filter(Boolean)));
+      const storeMap: Record<string, Store | null> = {};
+      await Promise.all(uniqueStoreIds.map(async (sid) => {
+        if (!sid) return;
+        const s = await getDoc(doc(db, 'stores', sid));
+        storeMap[sid] = s.exists() ? (s.data() as Store) : null;
+      }));
+      setOffers(raw.map(o => ({ ...o, store: o.storeId ? storeMap[o.storeId] ?? null : null })));
       setLoading(false);
     }, () => setLoading(false));
     return unsub;
@@ -50,12 +67,13 @@ export default function HomeScreen() {
 
   const withDistance = useMemo(() => {
     const addDist = (o: Offer) => {
-      if (!coords || o.lat == null || o.lng == null) return { ...o, distanceKm: null as number | null };
+      const slat = o.store?.lat; const slng = o.store?.lng;
+      if (!coords || slat == null || slng == null) return { ...o, distanceKm: null as number | null };
       const R = 6371;
       const toRad = (v:number)=>v*Math.PI/180;
-      const dLat = toRad(o.lat - coords.lat);
-      const dLng = toRad(o.lng - coords.lng);
-      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(coords.lat))*Math.cos(toRad(o.lat))*Math.sin(dLng/2)**2;
+      const dLat = toRad(slat - coords.lat);
+      const dLng = toRad(slng - coords.lng);
+      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(coords.lat))*Math.cos(toRad(slat))*Math.sin(dLng/2)**2;
       const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
       return { ...o, distanceKm: R*c };
     };
@@ -101,6 +119,9 @@ export default function HomeScreen() {
 
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+                  {item.store?.address && (
+                    <Text style={{ color: colors.textMuted }} numberOfLines={1}>{item.store.address}</Text>
+                  )}
                   <View style={[styles.timeBox, { backgroundColor: colors.tagBg }]}>
                     <Text style={[styles.time, { color: colors.tagText }]}>{item.pickupUntil}</Text>
                   </View>

@@ -266,9 +266,14 @@ export default function Profile() {
           {/* Partner controls */}
           <Text style={styles.section}>Partner</Text>
           {role === 'partner' || role === 'admin' ? (
-            <TouchableOpacity style={styles.btn} onPress={() => router.push('/(tabs)/create-offer')}>
-              <Text style={styles.btnText}>Create Offer</Text>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity style={styles.btn} onPress={() => router.push('/(tabs)/create-offer')}>
+                <Text style={styles.btnText}>Create Offer</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.btn} onPress={() => router.push('/(tabs)/store-admin')}>
+                <Text style={styles.btnText}>Edit Store</Text>
+              </TouchableOpacity>
+            </>
           ) : (
             <TouchableOpacity style={styles.btn} onPress={requestPartner}>
               <Text style={styles.btnText}>Request Partner Access</Text>
