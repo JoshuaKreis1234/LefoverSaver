@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } fr
 import { useLocalSearchParams, router } from 'expo-router';
 import { auth, db } from '../../firebase';
 import { addDoc, collection, doc, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { scheduleBookingReminder } from '../../notifications';
 import { money } from '../../theme';
 import PaymentModal from '../../components/PaymentModal';
 
@@ -72,6 +73,7 @@ export default function Details() {
           { text: 'OK', onPress: () => router.replace('/(tabs)/orders') },
         ]);
       } else {
+
         const code = Math.random().toString(36).slice(2, 10).toUpperCase();
         await addDoc(collection(db, 'bookings'), {
           offerId: data.id,
