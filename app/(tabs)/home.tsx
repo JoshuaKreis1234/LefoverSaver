@@ -90,7 +90,8 @@ export default function HomeScreen() {
   return (
     <LinearGradient colors={[colors.bg, colors.bg2]} style={[styles.background]}>
       <StatusBar barStyle={Platform.OS === 'ios' ? 'dark-content' : 'light-content'} translucent backgroundColor="transparent" />
-      <Text style={[styles.header,{ color: colors.primary }]}>🍽️ Today’s Food Offers</Text>
+      <Text style={[styles.header, { color: colors.primary }]}>🍽️ Today’s Food Offers</Text>
+      <Text style={[styles.subtitle, { color: colors.textMuted }]}>Find deals near you</Text>
 
       {loading ? (
         <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>
@@ -150,9 +151,28 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   background: { flex: 1, paddingTop: 60 },
-  header: { fontSize: 28, fontWeight: 'bold', marginLeft: 28, marginBottom: 16, letterSpacing: 0.5 },
+  header: { fontSize: 28, fontWeight: 'bold', marginLeft: 28, marginBottom: 4, letterSpacing: 0.5 },
+  subtitle: { fontSize: 16, marginLeft: 28, marginBottom: 16 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   filters: { paddingHorizontal: 20, marginBottom: 10 },
   input: { borderRadius: 8, padding: 8, marginBottom: 8 },
   map: { flex: 1 },
+  card: {
+    marginHorizontal: 20,
+    marginBottom: 18,
+    borderRadius: 16,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  cardRow: { flexDirection: 'row', alignItems: 'center' },
+  thumb: { width: 80, height: 80, borderRadius: 12 },
+  name: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
+  timeBox: { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, marginTop: 6 },
+  time: { fontSize: 12, fontWeight: '500' },
+  priceBox: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, marginLeft: 12 },
+  price: { fontSize: 16, fontWeight: 'bold' },
 });
