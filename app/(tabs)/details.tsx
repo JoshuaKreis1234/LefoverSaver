@@ -37,7 +37,8 @@ export default function Details() {
         const currentStock = (current?.stock ?? 1);
         if (currentStock <= 0) throw new Error('Sold out');
         tx.update(offerRef, { stock: currentStock - 1 });
-        // create booking
+        // create booking with unique code and status
+        const code = Math.random().toString(36).slice(2, 10).toUpperCase();
         await addDoc(collection(db, 'bookings'), {
           offerId: data.id,
           offerName: data.name,
@@ -45,6 +46,8 @@ export default function Details() {
           pickupUntil: data.pickupUntil,
           uid: auth.currentUser!.uid,
           createdAt: serverTimestamp(),
+          code,
+          status: 'active',
           ...(data.currency ? { currency: data.currency } : {}),
         });
       });
