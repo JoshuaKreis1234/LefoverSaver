@@ -1,16 +1,29 @@
 import React, { useState } from 'react';
-import { Modal, View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { money } from '../theme';
+import { Modal, View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
+import { money, palettes, useTheme } from '@/theme';
 
 interface Props {
   visible: boolean;
   amount: number;
   currency: string;
   onComplete: (paid: boolean) => void;
+  lightColor?: string;
+  darkColor?: string;
 }
 
-export default function PaymentModal({ visible, amount, currency, onComplete }: Props) {
+export default function PaymentModal({
+  visible,
+  amount,
+  currency,
+  onComplete,
+  lightColor,
+  darkColor,
+}: Props) {
   const [processing, setProcessing] = useState(false);
+  const { colors } = useTheme();
 
   const handlePay = async () => {
     setProcessing(true);
@@ -28,15 +41,29 @@ export default function PaymentModal({ visible, amount, currency, onComplete }: 
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
-        <View style={styles.card}>
-          <Text style={styles.title}>Pay {money(amount, currency)}</Text>
-          <TouchableOpacity style={styles.pay} onPress={handlePay} disabled={processing}>
-            {processing ? <ActivityIndicator color="#fff" /> : <Text style={styles.payText}>Confirm Payment</Text>}
+        <ThemedView
+          style={styles.card}
+          lightColor={lightColor ?? palettes.light.card}
+          darkColor={darkColor ?? palettes.dark.card}
+        >
+          <ThemedText style={[styles.title, { color: colors.text }]}>
+            Pay {money(amount, currency)}
+          </ThemedText>
+          <TouchableOpacity
+            style={[styles.pay, { backgroundColor: colors.primary }]}
+            onPress={handlePay}
+            disabled={processing}
+          >
+            {processing ? (
+              <ActivityIndicator color={colors.card} />
+            ) : (
+              <ThemedText style={[styles.payText, { color: colors.card }]}>Confirm Payment</ThemedText>
+            )}
           </TouchableOpacity>
           <TouchableOpacity style={styles.cancel} onPress={() => onComplete(false)} disabled={processing}>
-            <Text style={styles.cancelText}>Cancel</Text>
+            <ThemedText style={[styles.cancelText, { color: colors.text }]}>Cancel</ThemedText>
           </TouchableOpacity>
-        </View>
+        </ThemedView>
       </View>
     </Modal>
   );
@@ -50,15 +77,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   card: {
-    backgroundColor: '#fff',
     padding: 24,
     borderRadius: 12,
     width: '80%',
   },
   title: { fontSize: 20, fontWeight: '700', marginBottom: 20, textAlign: 'center' },
-  pay: { backgroundColor: '#16a34a', paddingVertical: 12, borderRadius: 8, alignItems: 'center', marginBottom: 12 },
-  payText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  pay: { paddingVertical: 12, borderRadius: 8, alignItems: 'center', marginBottom: 12 },
+  payText: { fontWeight: '700', fontSize: 16 },
   cancel: { alignItems: 'center', paddingVertical: 12 },
-  cancelText: { color: '#374151', fontWeight: '700', fontSize: 16 },
+  cancelText: { fontWeight: '700', fontSize: 16 },
 });
 
