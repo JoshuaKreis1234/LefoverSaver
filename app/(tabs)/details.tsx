@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } fr
 import { useLocalSearchParams, router } from 'expo-router';
 import { auth, db } from '../../firebase';
 import { addDoc, collection, doc, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { scheduleBookingReminder } from '../../notifications';
 import { money } from '../../theme';
 
 type Offer = {
@@ -48,6 +49,7 @@ export default function Details() {
         });
       });
 
+      await scheduleBookingReminder(data.pickupUntil);
       Alert.alert('Booked!', 'Your meal has been reserved.', [
         { text: 'OK', onPress: () => router.replace('/(tabs)/orders') },
       ]);
