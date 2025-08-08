@@ -1,0 +1,35 @@
+[
+  {
+    "name": "Cafe Aroma Surprise Bag",
+    "priceCents": 599,
+    "currency": "EUR",
+    "pickupUntil": "Pickup before 8PM",
+    "stock": 5,
+    "lat": 52.52,
+    "lng": 13.405,
+    "imageUrl": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=600&q=60",
+    "ownerUid": "demoCafeAroma"
+  },
+  {
+    "name": "Downtown Bakery Bread Bundle",
+    "priceCents": 399,
+    "currency": "EUR",
+    "pickupUntil": "Pickup 6–7PM",
+    "stock": 3,
+    "lat": 52.519,
+    "lng": 13.401,
+    "imageUrl": "https://images.unsplash.com/photo-1608198093002-ad4e0054848b?auto=format&fit=crop&w=600&q=60",
+    "ownerUid": "demoBakery"
+  },
+  {
+    "name": "Sushi Palace Leftover Box",
+    "priceCents": 1099,
+    "currency": "EUR",
+    "pickupUntil": "Pickup before 9PM",
+    "stock": 2,
+    "lat": 52.515,
+    "lng": 13.409,
+    "imageUrl": "https://images.unsplash.com/photo-1562967916-eb82221dfb36?auto=format&fit=crop&w=600&q=60",
+    "ownerUid": "demoSushiPalace"
+  }
+]

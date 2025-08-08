@@ -35,6 +35,16 @@ npm run reset-project
 
 This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
+## Seed mock offers
+
+To populate your Firestore instance with sample offers for testing, run:
+
+```bash
+node scripts/seed-mock-offers.mjs
+```
+
+This uses the data defined in [`scripts/mock-offers.json`](scripts/mock-offers.json) and writes it to the `offers` collection in your Firebase project.
+
 ## Learn more
 
 To learn more about developing your project with Expo, look at the following resources:
