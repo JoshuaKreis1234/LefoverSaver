@@ -1,7 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity, Image, Alert, ActivityIndicator, ScrollView
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  Alert,
+  ActivityIndicator,
+  ScrollView,
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as WebBrowser from 'expo-web-browser';
 import { useIdTokenAuthRequest } from 'expo-auth-session/providers/google';
@@ -182,31 +191,33 @@ export default function Profile() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.container}>
       <Text style={styles.title}>Profile</Text>
 
       {/* Avatar + Basic info */}
-      <View style={styles.row}>
+      <View style={[styles.card, styles.row]}>
         <TouchableOpacity onPress={signedIn ? pickAvatar : undefined}>
           {photoURL ? (
             <Image source={{ uri: photoURL }} style={styles.avatar} />
           ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]} />
+            <View style={[styles.avatar, styles.avatarPlaceholder]}>
+              <MaterialIcons name="person" size={40} color="#9ca3af" />
+            </View>
           )}
         </TouchableOpacity>
-        <View style={{ flex: 1, marginLeft: 12 }}>
+        <View style={styles.info}>
+          <Text style={styles.greeting}>
+            {displayName ? `Welcome, ${displayName}` : 'Welcome'}
+          </Text>
           <Text style={styles.uid} numberOfLines={1}>
             {user ? `UID: ${user.uid}` : 'Not signed in'}
           </Text>
-          <Text style={styles.role}>
-            Role: {role ?? 'unknown'}
-          </Text>
+          <Text style={styles.role}>Role: {role ?? 'unknown'}</Text>
         </View>
       </View>
 
-      {/* Sign-in / Sign-up */}
       {!signedIn && (
-        <>
+        <View style={styles.card}>
           <Text style={styles.section}>Sign in / Sign up</Text>
           <TextInput
             placeholder="Email"
@@ -241,28 +252,32 @@ export default function Profile() {
               <Text style={styles.btnGhostText}>Continue Anonymously</Text>
             </TouchableOpacity>
           </View>
-        </>
+        </View>
       )}
 
-      {/* Update profile */}
       {signedIn && (
         <>
-          <Text style={styles.section}>Update Profile</Text>
-          <TextInput
-            placeholder="Display name"
-            style={styles.input}
-            value={displayName}
-            onChangeText={setDisplayName}
-          />
-          <View style={styles.actions}>
-            <TouchableOpacity style={styles.btn} onPress={saveDisplayName}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Save</Text>}
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.btn, { backgroundColor: '#ef4444' }]} onPress={doSignOut}>
-              <Text style={styles.btnText}>Sign Out</Text>
-            </TouchableOpacity>
+          <View style={styles.card}>
+            <Text style={styles.section}>Update Profile</Text>
+            <TextInput
+              placeholder="Display name"
+              style={styles.input}
+              value={displayName}
+              onChangeText={setDisplayName}
+            />
+            <View style={styles.actions}>
+              <TouchableOpacity style={styles.btn} onPress={saveDisplayName}>
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.btnText}>Save</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.btn, { backgroundColor: '#ef4444' }]} onPress={doSignOut}>
+                <Text style={styles.btnText}>Sign Out</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-
           {/* Partner controls */}
           <Text style={styles.section}>Partner</Text>
           {role === 'partner' || role === 'admin' ? (
@@ -286,17 +301,50 @@ export default function Profile() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, paddingTop: 60 },
+  container: { flexGrow: 1, padding: 20, paddingTop: 60, backgroundColor: '#f9fafb' },
   title: { fontSize: 24, fontWeight: '800', marginBottom: 12 },
-  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#e5e7eb' },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  row: { flexDirection: 'row', alignItems: 'center' },
+  avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#e5e7eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   avatarPlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  uid: { color: '#475569', fontSize: 12 },
+  info: { flex: 1, marginLeft: 12 },
+  greeting: { fontSize: 18, fontWeight: '700', color: '#111827' },
+  uid: { color: '#475569', fontSize: 12, marginTop: 4 },
   role: { marginTop: 4, color: '#111827', fontWeight: '700' },
-  section: { marginTop: 14, marginBottom: 6, fontWeight: '800', color: '#111827' },
-  input: { borderWidth: 1, borderColor: '#e5e7eb', padding: 12, borderRadius: 10, backgroundColor: '#fff', marginBottom: 8 },
+  section: { marginBottom: 8, fontWeight: '800', color: '#111827', fontSize: 16 },
+  input: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    marginBottom: 8,
+  },
   actions: { flexDirection: 'row', gap: 10, marginTop: 6, flexWrap: 'wrap' },
-  btn: { backgroundColor: '#111827', paddingVertical: 12, paddingHorizontal: 16, borderRadius: 10 },
+  btn: {
+    backgroundColor: '#111827',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
   btnText: { color: '#fff', fontWeight: '800' },
   btnAlt: { backgroundColor: '#fef3c7' },
   btnAltText: { color: '#1f2937' },

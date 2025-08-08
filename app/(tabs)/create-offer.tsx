@@ -7,6 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { auth, db, storage } from '../../firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { notifyNewOffer } from '../../notifications';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export default function CreateOffer() {
@@ -83,7 +84,7 @@ export default function CreateOffer() {
         storeId: auth.currentUser.uid,
         createdAt: serverTimestamp(),
       });
-
+      await notifyNewOffer(name.trim());
       Alert.alert('Created', 'Offer added successfully.', [
         { text: 'OK', onPress: () => router.back() },
       ]);
