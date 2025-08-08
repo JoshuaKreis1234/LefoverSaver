@@ -2,7 +2,8 @@
   "expo": {
     "scheme": "leftoversaver",
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "react-native-maps"
     ]
   }
 }
