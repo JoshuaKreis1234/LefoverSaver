@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, StyleSheet, TouchableOpacity, Alert,
+  Text, TextInput, StyleSheet, TouchableOpacity, Alert,
   ScrollView, Image, ActivityIndicator, KeyboardAvoidingView, Platform
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
