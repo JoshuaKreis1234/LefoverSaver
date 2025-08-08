@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, StatusBar, Platform, FlatList, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, ActivityIndicator, Platform, FlatList, TouchableOpacity, Image } from 'react-native';
+import Slider from '@react-native-community/slider';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
@@ -37,6 +38,9 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [coords, setCoords] = useState<{lat:number; lng:number} | null>(null);
+  const [maxDistanceKm, setMaxDistanceKm] = useState<number | null>(null);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [maxPriceCents, setMaxPriceCents] = useState<number | null>(null);
 
   // get location (ask once)
   useEffect(() => {
@@ -72,7 +76,19 @@ export default function HomeScreen() {
     return unsub;
   }, []);
 
-  const withDistance = useMemo(() => {
+  const allCategories = useMemo(() => {
+    const set = new Set<string>();
+    offers.forEach(o => o.categories?.forEach(c => set.add(c)));
+    return Array.from(set).sort();
+  }, [offers]);
+
+  const toggleCategory = (c: string) => {
+    setSelectedCategories(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
+  };
+
+  const maxOfferPrice = useMemo(() => offers.reduce((m, o) => Math.max(m, o.priceCents), 0), [offers]);
+
+  const filtered = useMemo(() => {
     const addDist = (o: Offer) => {
       const slat = o.store?.lat; const slng = o.store?.lng;
       if (!coords || slat == null || slng == null) return { ...o, distanceKm: null as number | null };
@@ -84,13 +100,21 @@ export default function HomeScreen() {
       const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
       return { ...o, distanceKm: R*c };
     };
-    return offers.map(addDist).sort((a,b) => {
-      // nearest first; if nulls, push to bottom
-      const da = a.distanceKm ?? 9999;
-      const db = b.distanceKm ?? 9999;
-      return da - db;
-    });
-  }, [offers, coords]);
+    const filtered = offers
+      .map(addDist)
+      .filter(o =>
+        (maxDistanceKm == null || (o.distanceKm ?? Infinity) <= maxDistanceKm) &&
+        (selectedCategories.length === 0 || o.categories?.some(c => selectedCategories.includes(c))) &&
+        (maxPriceCents == null || o.priceCents <= maxPriceCents)
+      )
+      .sort((a,b) => {
+        // nearest first; if nulls, push to bottom
+        const da = a.distanceKm ?? 9999;
+        const db = b.distanceKm ?? 9999;
+        return da - db;
+      });
+    return filtered;
+  }, [offers, coords, maxDistanceKm, selectedCategories, maxPriceCents]);
 
 
   return (
@@ -121,54 +145,86 @@ export default function HomeScreen() {
           )}
         />
       ) : (
-        <FlatList
-          data={withDistance}
-          contentContainerStyle={{ paddingBottom: 32 }}
-          keyExtractor={(item) => item.id}
-          ListEmptyComponent={
-            <View style={styles.center}>
-              {/* Optional Lottie empty state */}
-              {/* <LottieView source={require('../../assets/lottie/empty.json')} autoPlay loop style={{ width: 220, height: 220 }} /> */}
-              <Text style={{ color: colors.textMuted, marginTop: 12 }}>No offers available right now.</Text>
+        <>
+          <View style={styles.filters}>
+            <Text style={{ color: colors.text }}>Max Distance: {maxDistanceKm != null ? `${maxDistanceKm.toFixed(0)} km` : '∞'}</Text>
+            <Slider
+              minimumValue={0}
+              maximumValue={20}
+              step={1}
+              value={maxDistanceKm ?? 20}
+              onValueChange={setMaxDistanceKm}
+            />
+
+            <Text style={{ color: colors.text, marginTop: 8 }}>Categories:</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+              {allCategories.map(c => (
+                <TouchableOpacity key={c} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 8, marginTop: 4 }} onPress={() => toggleCategory(c)}>
+                  <View style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 1, borderColor: colors.text, backgroundColor: selectedCategories.includes(c) ? colors.primary : 'transparent', marginRight: 4 }} />
+                  <Text style={{ color: colors.text }}>{c}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          }
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[styles.card, { backgroundColor: colors.card, shadowOpacity: 0.12 }]}
-              activeOpacity={0.9}
-              onPress={() => router.push({ pathname: '/(tabs)/details', params: { offer: JSON.stringify(item) } })}
-            >
-              <View style={styles.cardRow}>
-                {item.imageUrl ? (
-                  <Image source={{ uri: item.imageUrl }} style={styles.thumb} />
-                ) : (
-                  <View style={[styles.thumb, { backgroundColor: colors.tagBg }]} />
-                )}
 
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
-                  {item.store?.address && (
-                    <Text style={{ color: colors.textMuted }} numberOfLines={1}>{item.store.address}</Text>
-                  )}
-                  <View style={[styles.timeBox, { backgroundColor: colors.tagBg }]}>
-                    <Text style={[styles.time, { color: colors.tagText }]}>{item.pickupUntil}</Text>
-                  </View>
-                  {item.distanceKm != null && (
-                    <Text style={{ color: colors.textMuted, marginTop: 6 }}>
-                      {item.distanceKm.toFixed(1)} km away
-                    </Text>
-                  )}
-                </View>
+            <Text style={{ color: colors.text, marginTop: 8 }}>Max Price: {maxPriceCents != null ? money(maxPriceCents, 'EUR') : '∞'}</Text>
+            <Slider
+              minimumValue={0}
+              maximumValue={maxOfferPrice || 10000}
+              step={100}
+              value={maxPriceCents ?? (maxOfferPrice || 10000)}
+              onValueChange={setMaxPriceCents}
+            />
+          </View>
 
-                <View style={[styles.priceBox, { backgroundColor: colors.priceBg }]}>
-                  <Text style={[styles.price, { color: colors.priceText }]}>
-                    {money(item.priceCents, item.currency || 'EUR')}
-                  </Text>
-                </View>
+          <FlatList
+            data={filtered}
+            contentContainerStyle={{ paddingBottom: 32 }}
+            keyExtractor={(item) => item.id}
+            ListEmptyComponent={
+              <View style={styles.center}>
+                {/* Optional Lottie empty state */}
+                {/* <LottieView source={require('../../assets/lottie/empty.json')} autoPlay loop style={{ width: 220, height: 220 }} /> */}
+                <Text style={{ color: colors.textMuted, marginTop: 12 }}>No offers available right now.</Text>
               </View>
-            </TouchableOpacity>
-          )}
-        />
+            }
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[styles.card, { backgroundColor: colors.card, shadowOpacity: 0.12 }]}
+                activeOpacity={0.9}
+                onPress={() => router.push({ pathname: '/(tabs)/details', params: { offer: JSON.stringify(item) } })}
+              >
+                <View style={styles.cardRow}>
+                  {item.imageUrl ? (
+                    <Image source={{ uri: item.imageUrl }} style={styles.thumb} />
+                  ) : (
+                    <View style={[styles.thumb, { backgroundColor: colors.tagBg }]} />
+                  )}
+
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+                    {item.store?.address && (
+                      <Text style={{ color: colors.textMuted }} numberOfLines={1}>{item.store.address}</Text>
+                    )}
+                    <View style={[styles.timeBox, { backgroundColor: colors.tagBg }]}> 
+                      <Text style={[styles.time, { color: colors.tagText }]}>{item.pickupUntil}</Text>
+                    </View>
+                    {item.distanceKm != null && (
+                      <Text style={{ color: colors.textMuted, marginTop: 6 }}>
+                        {item.distanceKm.toFixed(1)} km away
+                      </Text>
+                    )}
+                  </View>
+
+                  <View style={[styles.priceBox, { backgroundColor: colors.priceBg }]}> 
+                    <Text style={[styles.price, { color: colors.priceText }]}> 
+                      {money(item.priceCents, item.currency || 'EUR')}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            )}
+          />
+        </>
       )}
     </LinearGradient>
   );
